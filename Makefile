@@ -23,7 +23,7 @@ LIBS:=-I$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-uclibc/include/c++/4.8.3/mipsel-op
 include $(INCLUDE_DIR)/package.mk
 
 define Package/node
-  DEPENDS:=+libpthread +librt +uclibcxx
+  DEPENDS:=+libpthread +librt +uclibcxx +libopenssl
   SECTION:=lang
   CATEGORY:=Languages
   TITLE:=Node.js is a platform built on Chrome's JavaScript runtime
@@ -32,6 +32,14 @@ endef
 
 define Package/node/description
 Node.js is a platform built on Chrome's JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.
+endef
+
+define Package/npm
+  DEPENDS:=+node
+  SECTION:=lang
+  CATEGORY:=Languages
+  TITLE:=Node/io.js Package Manager
+  URL:=https://npmjs.org/
 endef
 
 define Build/Prepare
@@ -49,8 +57,11 @@ define Build/Configure
 	export LIBS="$(LIBS)"; \
 	export CFLAGS="$(TARGET_CFLAGS) $(LIBS)"; \
 	export CXXFLAGS="$(TARGET_CXXFLAGS) $(LIBS)"; \
-    export GYPFLAGS="$(GYPFLAGS)"; \
-	./configure --dest-cpu=mips --dest-os=linux --without-ssl --without-snapshot --with-arm-float-abi=soft; \
+	export GYPFLAGS="$(GYPFLAGS)"; \
+	./configure --dest-cpu=mips --dest-os=linux \
+	--shared-openssl-includes="$(STAGING_DIR)/usr/include" --shared-openssl-libpath="$(STAGING_DIR)/usr/lib" --shared-openssl \
+	--shared-zlib --shared-zlib-includes="$(STAGING_DIR)/usr/include" --shared-zlib-libpath="$(STAGING_DIR)/usr/lib" \
+	--without-snapshot --with-arm-float-abi=soft; \
 	);
 endef
 
@@ -66,4 +77,13 @@ define Package/node/install
 	ln -s /usr/bin/node $(1)/usr/bin/nodejs
 endef
 
+
+define Package/npm/install
+	mkdir -p $(1)/usr/lib/node_modules $(1)/usr/bin
+	$(CP) $(PKG_BUILD_DIR)/deps/npm $(1)/usr/lib/node_modules
+	ln -sf /usr/lib/node_modules/npm/bin/npm-cli.js $(1)/usr/bin/npm
+endef
+
+
 $(eval $(call BuildPackage,node))
+$(eval $(call BuildPackage,npm))
